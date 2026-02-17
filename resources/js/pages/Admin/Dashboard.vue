@@ -1,7 +1,7 @@
 <template>
-  <div>
+  <div class="">
     <h1>Admin Dashboard</h1>
-    <button @click="logout">Logout</button>
+    <button class="btn" @click="logout">Logout</button>
   </div>
 </template>
 
