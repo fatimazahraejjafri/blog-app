@@ -28,8 +28,8 @@ const getVisibilityIcon = (visibility) => {
 </script>
 
 <template>
-    <Modal max-width="10xl">
-        <div class="bg-white dark:bg-gray-800 rounded-xl overflow-hidden">
+<Modal max-width="6xl" >
+    <div class="bg-white dark:bg-gray-800 rounded-xl overflow-hidden w-[100vw] max-w-[1000px] mx-auto">
             <!-- Header -->
             <div class="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center z-10">
                 <h2 class="text-xl font-bold text-gray-900 dark:text-white truncate pr-4">
@@ -39,7 +39,7 @@ const getVisibilityIcon = (visibility) => {
                     @click="modal.close()"
                     class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition flex-shrink-0"
                 >
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-7 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </button>
