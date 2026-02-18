@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Post;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Http\JsonResponse;
 
 class PostController extends Controller
 {
@@ -36,7 +38,7 @@ class PostController extends Controller
             ];
         });
 
-        return Inertia::render('Admin/Posts/Index', [
+        return Inertia::render('Admin/Manage', [
             'posts' => $posts,
             'filters' => $request->only(['search', 'status']),
             'stats' => [
@@ -85,4 +87,54 @@ class PostController extends Controller
         $post->delete();
         return back()->with('success', 'Post deleted!');
     }
+    public function stats(): JsonResponse
+{
+    $posts = Post::all();
+
+    $stats = [
+        'total'      => $posts->count(),
+        'published'  => $posts->where('status', 'published')->count(),
+        'pending'    => $posts->where('status', 'pending')->count(),
+        'draft'      => $posts->where('status', 'draft')->count(),
+        'archived'   => $posts->where('status', 'archived')->count(),
+        'thisMonth'  => Post::whereMonth('created_at', now()->month)
+                            ->whereYear('created_at', now()->year)
+                            ->count(),
+        'topAuthors' => Post::select('user_id', DB::raw('count(*) as count'))
+                            ->with('user:id,name')
+                            ->groupBy('user_id')
+                            ->orderByDesc('count')
+                            ->limit(3)
+                            ->get()
+                            ->map(fn($p) => [
+                                'id'    => $p->user_id,
+                                'name'  => $p->user->name,
+                                'count' => $p->count,
+                            ]),
+    ];
+
+    $recent = Post::with('user')
+        ->latest()
+        ->limit(5)
+        ->get(['id', 'title', 'status']);
+
+    // Last 30 days trend
+    $trend = Post::select(
+            DB::raw('DATE(created_at) as date'),
+            DB::raw('count(*) as count')
+        )
+        ->where('created_at', '>=', now()->subDays(30))
+        ->groupBy('date')
+        ->orderBy('date')
+        ->get();
+
+    return response()->json([
+        'stats'  => $stats,
+        'recent' => $recent,
+        'trend'  => [
+            'labels' => $trend->pluck('date'),
+            'data'   => $trend->pluck('count'),
+        ],
+    ]);
+}
 }

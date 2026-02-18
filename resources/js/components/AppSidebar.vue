@@ -16,12 +16,18 @@ import {
 import { dashboard } from '@/routes';
 import { type NavItem } from '@/types';
 import AppLogo from './AppLogo.vue';
+import posts from '@/routes/posts';
 
 const mainNavItems: NavItem[] = [
     {
         title: 'Dashboard',
         href: dashboard(),
         icon: LayoutGrid,
+    },
+    {
+        title: 'Posts',
+        href: posts.index(),
+        icon: Folder,
     },
 ];
 
@@ -49,6 +55,7 @@ const footerNavItems: NavItem[] = [
                             <AppLogo />
                         </Link>
                         
+                        
                     </SidebarMenuButton>
                 </SidebarMenuItem>
             </SidebarMenu>
@@ -59,7 +66,6 @@ const footerNavItems: NavItem[] = [
         </SidebarContent>
 
         <SidebarFooter>
-            <NavFooter :items="footerNavItems" />
             <NavUser />
         </SidebarFooter>
     </Sidebar>

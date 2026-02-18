@@ -1,55 +1,105 @@
 <?php
-// In your routes/web.php — replace the admin dashboard route with this:
 
-Route::get('/dashboard', function () {
-    if (session('is_admin') === true || Auth::guard('admin')->check()) {
-        return redirect('/admin/dashboard');
-    }
-    return Inertia::render('Dashboard');
-})->middleware(['auth:web', 'verified'])->name('dashboard');
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Laravel\Fortify\Features;
+
+use App\Http\Controllers\PostController;
+use App\Http\Controllers\Admin\PostController as AdminPostController;
+
+/*
+|--------------------------------------------------------------------------
+| Public Routes
+|--------------------------------------------------------------------------
+*/
+
+Route::get('/', function () {
+    return Inertia::render('Welcome', [
+        'canRegister' => Features::enabled(Features::registration()),
+    ]);
+})->name('home');
 
 
-Route::middleware(['auth:admin'])->prefix('admin')->group(function () {
+/*
+|--------------------------------------------------------------------------
+| User Routes (Web Guard)
+|--------------------------------------------------------------------------
+*/
 
+Route::middleware(['auth:web', 'verified'])->group(function () {
+
+    // User Dashboard
     Route::get('/dashboard', function () {
-        if (session('is_admin') !== true && !Auth::guard('admin')->check()) {
-            Auth::logout();
-            return redirect('/login');
+
+        // If somehow an admin accesses this, redirect properly
+        if (Auth::guard('admin')->check()) {
+            return redirect()->route('admin.dashboard');
         }
 
-        $posts = \App\Models\Post::query();
+        return Inertia::render('Dashboard');
+    })->name('dashboard');
 
-        return Inertia::render('Admin/Dashboard', [
-            'admin' => Auth::guard('admin')->user()->only('name', 'email'),
-
-            'stats' => [
-                'total'     => $posts->count(),
-                'pending'   => (clone $posts)->where('status', 'pending')->count(),
-                'published' => (clone $posts)->where('status', 'published')->count(),
-                'archived'  => (clone $posts)->where('status', 'archived')->count(),
-                'draft'     => (clone $posts)->where('status', 'draft')->count(),
-            ],
-
-            'recentPosts' => \App\Models\Post::with(['user', 'category'])
-                ->latest()
-                ->take(8)
-                ->get()
-                ->map(fn ($post) => [
-                    'id'             => $post->id,
-                    'title'          => $post->title,
-                    'status'         => $post->status,
-                    'featured_image' => $post->featured_image,
-                    'created_at'     => $post->created_at->diffForHumans(),
-                    'writer'         => $post->writer,
-                    'user'           => $post->user ? ['name' => $post->user->name] : null,
-                ]),
-        ]);
-    })->name('admin.dashboard');
-
-    // Post management routes (unchanged)
-    Route::get('/posts', [\App\Http\Controllers\Admin\PostController::class, 'index'])->name('admin.posts.index');
-    Route::patch('/posts/{post}/approve', [\App\Http\Controllers\Admin\PostController::class, 'approve'])->name('admin.posts.approve');
-    Route::patch('/posts/{post}/reject', [\App\Http\Controllers\Admin\PostController::class, 'reject'])->name('admin.posts.reject');
-    Route::patch('/posts/{post}/pending', [\App\Http\Controllers\Admin\PostController::class, 'pending'])->name('admin.posts.pending');
-    Route::delete('/posts/{post}', [\App\Http\Controllers\Admin\PostController::class, 'destroy'])->name('admin.posts.destroy');
+    // User Posts CRUD
+    Route::resource('posts', PostController::class);
 });
+
+
+/*
+|--------------------------------------------------------------------------
+| Admin Routes (Admin Guard)
+|--------------------------------------------------------------------------
+*/
+
+Route::prefix('admin')
+    ->middleware(['auth:admin'])
+    ->name('admin.')
+    ->group(function () {
+
+        // Admin Dashboard
+        Route::get('/dashboard', function () {
+            return Inertia::render('Admin/Dashboard', [
+                'admin' => Auth::guard('admin')->user(),
+            ]);
+        })->name('dashboard');
+
+        // Admin Post Management
+        Route::get('/posts', [AdminPostController::class, 'index'])
+            ->name('posts.index');
+
+        Route::patch('/posts/{post}/approve', [AdminPostController::class, 'approve'])
+            ->name('posts.approve');
+
+        Route::patch('/posts/{post}/reject', [AdminPostController::class, 'reject'])
+            ->name('posts.reject');
+
+        Route::patch('/posts/{post}/pending', [AdminPostController::class, 'pending'])
+            ->name('posts.pending');
+
+        Route::delete('/posts/{post}', [AdminPostController::class, 'destroy'])
+            ->name('posts.destroy');
+
+
+        Route::get('/posts/stats', [AdminPostController::class, 'stats'])->name('posts.stats');});
+
+
+/*
+|--------------------------------------------------------------------------
+| Logout (Handles both guards)
+|--------------------------------------------------------------------------
+*/
+
+Route::post('/logout', function (Request $request) {
+
+    Auth::guard('web')->logout();
+    Auth::guard('admin')->logout();
+
+    $request->session()->invalidate();
+    $request->session()->regenerateToken();
+
+    return redirect('/');
+})->name('logout');
+
+
+require __DIR__.'/settings.php';
