@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, watch } from 'vue';
 import { router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/layouts/AppLayout.vue';
 
@@ -9,6 +9,7 @@ interface Post {
     writer?: string;
     status: 'published' | 'pending' | 'draft' | 'archived';
     visibility: string;
+    content: string;
     created_at: string;
     user: { name: string };
     category?: string;
@@ -42,9 +43,13 @@ const search = ref(props.filters.search ?? '');
 const activeStatus = ref(props.filters.status ?? 'all');
 const confirmDelete = ref<number | null>(null);
 
-// Debounced search
+// Post detail modal
+const viewingPost = ref<Post | null>(null);
+function openPost(post: Post) { viewingPost.value = post; }
+function closePost() { viewingPost.value = null; }
+
 let searchTimer: ReturnType<typeof setTimeout>;
-watch(search, (val) => {
+watch(search, () => {
     clearTimeout(searchTimer);
     searchTimer = setTimeout(() => applyFilters(), 400);
 });
@@ -63,16 +68,20 @@ function setStatus(status: string) {
 
 function approve(id: number) {
     router.patch(`/admin/posts/${id}/approve`);
+    if (viewingPost.value?.id === id) closePost();
 }
 function reject(id: number) {
     router.patch(`/admin/posts/${id}/reject`);
+    if (viewingPost.value?.id === id) closePost();
 }
 function setPending(id: number) {
     router.patch(`/admin/posts/${id}/pending`);
+    if (viewingPost.value?.id === id) closePost();
 }
 function destroy(id: number) {
     confirmDelete.value = null;
     router.delete(`/admin/posts/${id}`);
+    if (viewingPost.value?.id === id) closePost();
 }
 
 const statusTabs = [
@@ -84,189 +93,182 @@ const statusTabs = [
 ];
 
 const statusMeta: Record<string, { label: string; cls: string }> = {
-    published: { label: 'Published', cls: 'pill-green' },
-    pending:   { label: 'Pending',   cls: 'pill-yellow' },
-    draft:     { label: 'Draft',     cls: 'pill-indigo' },
-    archived:  { label: 'Archived',  cls: 'pill-gray' },
+    published: { label: 'Published', cls: 'bg-green-100 text-green-700' },
+    pending:   { label: 'Pending',   cls: 'bg-yellow-100 text-yellow-700' },
+    draft:     { label: 'Draft',     cls: 'bg-indigo-50 text-indigo-600 ring-1 ring-indigo-200' },
+    archived:  { label: 'Archived',  cls: 'bg-gray-100 text-gray-500' },
 };
 </script>
 
 <template>
-        <div class="page-wrap">
+    <AppLayout title="Manage Posts">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col gap-5">
 
             <!-- Header -->
-            <div class="page-header">
-                <div>
-                    <div class="breadcrumb">
-                        <Link href="/admin/dashboard" class="bc-link">Dashboard</Link>
-                        <span class="bc-sep">/</span>
-                        <span class="bc-current">Posts</span>
-                    </div>
-                    <h1 class="page-title">Manage Posts</h1>
+            <div>
+                <div class="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+                    <Link href="/admin/dashboard" class="text-indigo-500 hover:underline font-medium">Dashboard</Link>
+                    <span>/</span>
+                    <span>Posts</span>
                 </div>
+                <h1 class="text-2xl font-extrabold tracking-tight text-foreground">Manage Posts</h1>
             </div>
 
             <!-- Stats strip -->
-            <div class="stats-strip">
-                <div class="stat-chip pending-chip">
-                    <span class="chip-dot" style="background:#f59e0b;"></span>
-                    <span class="chip-num">{{ stats.pending }}</span>
-                    <span class="chip-lbl">Pending review</span>
+            <div class="flex flex-wrap gap-3">
+                <div class="flex items-center gap-2 bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-2.5 shadow-sm">
+                    <span class="w-2 h-2 rounded-full bg-yellow-400 shrink-0"></span>
+                    <span class="text-base font-bold text-foreground">{{ stats.pending }}</span>
+                    <span class="text-xs text-muted-foreground">Pending review</span>
                 </div>
-                <div class="stat-chip">
-                    <span class="chip-dot" style="background:#22c55e;"></span>
-                    <span class="chip-num">{{ stats.published }}</span>
-                    <span class="chip-lbl">Published</span>
+                <div class="flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-2.5 shadow-sm">
+                    <span class="w-2 h-2 rounded-full bg-green-500 shrink-0"></span>
+                    <span class="text-base font-bold text-foreground">{{ stats.published }}</span>
+                    <span class="text-xs text-muted-foreground">Published</span>
                 </div>
-                <div class="stat-chip">
-                    <span class="chip-dot" style="background:#6366f1;"></span>
-                    <span class="chip-num">{{ stats.draft }}</span>
-                    <span class="chip-lbl">Drafts</span>
+                <div class="flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-2.5 shadow-sm">
+                    <span class="w-2 h-2 rounded-full bg-indigo-500 shrink-0"></span>
+                    <span class="text-base font-bold text-foreground">{{ stats.draft }}</span>
+                    <span class="text-xs text-muted-foreground">Drafts</span>
                 </div>
-                <div class="stat-chip">
-                    <span class="chip-dot" style="background:#ef4444;"></span>
-                    <span class="chip-num">{{ stats.archived }}</span>
-                    <span class="chip-lbl">Archived</span>
+                <div class="flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-2.5 shadow-sm">
+                    <span class="w-2 h-2 rounded-full bg-red-400 shrink-0"></span>
+                    <span class="text-base font-bold text-foreground">{{ stats.archived }}</span>
+                    <span class="text-xs text-muted-foreground">Archived</span>
                 </div>
             </div>
 
             <!-- Toolbar -->
-            <div class="toolbar">
-                <!-- Status tabs -->
-                <div class="tabs">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="flex gap-1 bg-muted p-1 rounded-xl">
                     <button
                         v-for="tab in statusTabs"
                         :key="tab.key"
-                        class="tab-btn"
-                        :class="{ active: activeStatus === tab.key }"
                         @click="setStatus(tab.key)"
+                        :class="[
+                            'flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all',
+                            activeStatus === tab.key
+                                ? 'bg-card text-foreground shadow-sm'
+                                : 'text-muted-foreground hover:text-foreground hover:bg-card/60'
+                        ]"
                     >
                         {{ tab.label }}
-                        <span class="tab-count">{{ tab.count }}</span>
+                        <span :class="[
+                            'text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center',
+                            activeStatus === tab.key ? 'bg-indigo-500 text-white' : 'bg-border text-muted-foreground'
+                        ]">{{ tab.count }}</span>
                     </button>
                 </div>
 
-                <!-- Search -->
-                <div class="search-wrap">
-                    <span class="search-icon">🔍</span>
+                <div class="relative">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">🔍</span>
                     <input
                         v-model="search"
                         type="text"
                         placeholder="Search posts…"
-                        class="search-input"
+                        class="pl-9 pr-4 py-2 border border-border rounded-xl text-sm bg-card text-foreground w-60 outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition"
                     />
                 </div>
             </div>
 
             <!-- Table -->
-            <div class="table-card">
-                <table class="posts-table">
+            <div class="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
+                <table class="w-full border-collapse">
                     <thead>
-                        <tr>
-                            <th style="width:40%;">Post</th>
-                            <th>Author</th>
-                            <th>Category</th>
-                            <th>Status</th>
-                            <th>Date</th>
-                            <th style="text-align:right;">Actions</th>
+                        <tr class="bg-muted border-b border-border">
+                            <th class="text-left px-5 py-3 text-[11px] font-bold uppercase tracking-widest text-muted-foreground w-[35%]">Post</th>
+                            <th class="text-left px-5 py-3 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Author</th>
+                            <th class="text-left px-5 py-3 text-[11px] font-bold uppercase tracking-widest text-muted-foreground hidden md:table-cell">Category</th>
+                            <th class="text-left px-5 py-3 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Status</th>
+                            <th class="text-left px-5 py-3 text-[11px] font-bold uppercase tracking-widest text-muted-foreground hidden lg:table-cell">Date</th>
+                            <th class="text-right px-5 py-3 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr
                             v-for="post in posts.data"
                             :key="post.id"
-                            class="post-row"
+                            class="border-b border-border last:border-0 hover:bg-muted/40 transition-colors"
                         >
-                            <!-- Title -->
-                            <td>
-                                <div class="post-title-cell">
+                            <!-- Title — clicking opens detail modal -->
+                            <td class="px-5 py-3.5">
+                                <div class="flex items-center gap-3">
                                     <div
-                                        class="post-thumb"
+                                        class="w-10 h-10 rounded-lg bg-muted border border-border flex items-center justify-center text-lg shrink-0 bg-cover bg-center"
                                         :style="post.featured_image ? `background-image:url('${post.featured_image}')` : ''"
                                     >
                                         <span v-if="!post.featured_image">📄</span>
                                     </div>
-                                    <div class="post-meta">
-                                        <div class="post-title">{{ post.title }}</div>
-                                        <div v-if="post.writer" class="post-writer">by {{ post.writer }}</div>
+                                    <div>
+                                        <button
+                                            @click="openPost(post)"
+                                            class="text-sm font-semibold text-foreground leading-snug hover:text-indigo-500 transition-colors text-left"
+                                        >{{ post.title }}</button>
+                                        <div v-if="post.writer" class="text-xs text-muted-foreground mt-0.5">by {{ post.writer }}</div>
                                     </div>
                                 </div>
                             </td>
 
                             <!-- Author -->
-                            <td>
-                                <div class="author-cell">
-                                    <div class="mini-avatar">{{ post.user.name.charAt(0).toUpperCase() }}</div>
-                                    <span class="author-name">{{ post.user.name }}</span>
+                            <td class="px-5 py-3.5">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-7 h-7 rounded-full bg-indigo-500 text-white text-[11px] font-bold flex items-center justify-center shrink-0">
+                                        {{ post.user.name.charAt(0).toUpperCase() }}
+                                    </div>
+                                    <span class="text-sm font-medium text-foreground">{{ post.user.name }}</span>
                                 </div>
                             </td>
 
                             <!-- Category -->
-                            <td>
-                                <span class="category-tag" v-if="post.category">{{ post.category }}</span>
-                                <span v-else class="no-cat">—</span>
+                            <td class="px-5 py-3.5 hidden md:table-cell">
+                                <span v-if="post.category" class="text-xs font-medium bg-muted text-muted-foreground px-2.5 py-1 rounded-md">{{ post.category }}</span>
+                                <span v-else class="text-muted-foreground/30">—</span>
                             </td>
 
                             <!-- Status -->
-                            <td>
-                                <span class="pill" :class="statusMeta[post.status]?.cls">
+                            <td class="px-5 py-3.5">
+                                <span :class="['inline-flex items-center text-[11px] font-semibold px-2.5 py-1 rounded-full', statusMeta[post.status]?.cls]">
                                     {{ statusMeta[post.status]?.label ?? post.status }}
                                 </span>
                             </td>
 
                             <!-- Date -->
-                            <td class="date-cell">{{ post.created_at }}</td>
+                            <td class="px-5 py-3.5 text-xs text-muted-foreground whitespace-nowrap hidden lg:table-cell">
+                                {{ post.created_at }}
+                            </td>
 
                             <!-- Actions -->
-                            <td>
-                                <div class="actions-cell">
-                                    <!-- Pending actions -->
-                                    <template v-if="post.status === 'pending'">
-                                        <button class="action-btn approve-btn" @click="approve(post.id)" title="Approve">
-                                            ✓ Approve
-                                        </button>
-                                        <button class="action-btn reject-btn" @click="reject(post.id)" title="Reject">
-                                            ✕ Reject
-                                        </button>
-                                    </template>
-
-                                    <!-- Published actions -->
-                                    <template v-else-if="post.status === 'published'">
-                                        <button class="action-btn pending-btn" @click="setPending(post.id)" title="Set to pending">
-                                            ↺ Unpublish
-                                        </button>
-                                    </template>
-
-                                    <!-- Archived actions -->
-                                    <template v-else-if="post.status === 'archived'">
-                                        <button class="action-btn approve-btn" @click="approve(post.id)" title="Re-publish">
-                                            ↑ Publish
-                                        </button>
-                                    </template>
-
-                                    <!-- Draft actions -->
-                                    <template v-else-if="post.status === 'draft'">
-                                        <button class="action-btn approve-btn" @click="approve(post.id)" title="Publish">
-                                            ↑ Publish
-                                        </button>
-                                    </template>
-
-                                    <!-- Delete -->
+                            <td class="px-5 py-3.5">
+                                <div class="flex items-center gap-1.5 justify-end">
+                                    <!-- View button -->
                                     <button
-                                        class="action-btn delete-btn"
-                                        @click="confirmDelete = post.id"
-                                        title="Delete"
-                                    >🗑</button>
+                                        @click="openPost(post)"
+                                        class="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-muted text-muted-foreground border border-border hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition-all"
+                                    >
+                                        👁 View
+                                    </button>
+
+                                    <template v-if="post.status === 'pending'">
+                                        <button @click="approve(post.id)" class="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-green-50 text-green-700 border border-green-200 hover:bg-green-600 hover:text-white hover:border-green-600 transition-all">✓ Approve</button>
+                                        <button @click="reject(post.id)"  class="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-red-50 text-red-600 border border-red-200 hover:bg-red-600 hover:text-white hover:border-red-600 transition-all">✕ Reject</button>
+                                    </template>
+                                    <template v-else-if="post.status === 'published'">
+                                        <button @click="setPending(post.id)" class="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-yellow-50 text-yellow-700 border border-yellow-200 hover:bg-yellow-500 hover:text-white hover:border-yellow-500 transition-all">↺ Unpublish</button>
+                                    </template>
+                                    <template v-else>
+                                        <button @click="approve(post.id)" class="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-green-50 text-green-700 border border-green-200 hover:bg-green-600 hover:text-white hover:border-green-600 transition-all">↑ Publish</button>
+                                    </template>
+
+                                    <button @click="confirmDelete = post.id" class="inline-flex items-center text-[11px] px-2 py-1.5 rounded-lg bg-muted text-muted-foreground border border-border hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all">🗑</button>
                                 </div>
                             </td>
                         </tr>
 
-                        <!-- Empty state -->
                         <tr v-if="posts.data.length === 0">
-                            <td colspan="6" class="empty-state">
-                                <div class="empty-icon">📭</div>
-                                <div class="empty-text">No posts found</div>
-                                <div class="empty-sub">Try adjusting your search or filter</div>
+                            <td colspan="6" class="text-center py-16">
+                                <div class="text-4xl mb-3">📭</div>
+                                <div class="text-sm font-bold text-foreground">No posts found</div>
+                                <div class="text-xs text-muted-foreground mt-1">Try adjusting your search or filter</div>
                             </td>
                         </tr>
                     </tbody>
@@ -274,339 +276,168 @@ const statusMeta: Record<string, { label: string; cls: string }> = {
             </div>
 
             <!-- Pagination -->
-            <div class="pagination" v-if="posts.last_page > 1">
-                <span class="page-info">
+            <div v-if="posts.last_page > 1" class="flex items-center justify-between px-1">
+                <span class="text-sm text-muted-foreground">
                     Page {{ posts.current_page }} of {{ posts.last_page }}
-                    <span class="page-total">({{ posts.total }} posts)</span>
+                    <span class="text-muted-foreground/40 ml-1">({{ posts.total }} posts)</span>
                 </span>
-                <div class="page-btns">
-                    <Link
-                        v-if="posts.prev_page_url"
-                        :href="posts.prev_page_url"
-                        class="page-btn"
-                    >← Prev</Link>
-                    <span v-else class="page-btn disabled">← Prev</span>
-
-                    <Link
-                        v-if="posts.next_page_url"
-                        :href="posts.next_page_url"
-                        class="page-btn"
-                    >Next →</Link>
-                    <span v-else class="page-btn disabled">Next →</span>
+                <div class="flex gap-2">
+                    <Link v-if="posts.prev_page_url" :href="posts.prev_page_url" class="px-4 py-1.5 text-sm font-semibold border border-border rounded-lg bg-card text-foreground hover:border-indigo-400 hover:text-indigo-500 transition-all">← Prev</Link>
+                    <span v-else class="px-4 py-1.5 text-sm font-semibold border border-border rounded-lg text-muted-foreground/40 cursor-default">← Prev</span>
+                    <Link v-if="posts.next_page_url" :href="posts.next_page_url" class="px-4 py-1.5 text-sm font-semibold border border-border rounded-lg bg-card text-foreground hover:border-indigo-400 hover:text-indigo-500 transition-all">Next →</Link>
+                    <span v-else class="px-4 py-1.5 text-sm font-semibold border border-border rounded-lg text-muted-foreground/40 cursor-default">Next →</span>
                 </div>
             </div>
 
         </div>
 
-        <!-- Delete confirm modal -->
+        <!-- ── Post Detail Modal ── -->
         <Teleport to="body">
-            <div v-if="confirmDelete !== null" class="modal-overlay" @click.self="confirmDelete = null">
-                <div class="modal">
-                    <div class="modal-icon">🗑️</div>
-                    <h2 class="modal-title">Delete this post?</h2>
-                    <p class="modal-sub">This action cannot be undone. The post will be permanently removed.</p>
-                    <div class="modal-actions">
-                        <button class="btn-ghost" @click="confirmDelete = null">Cancel</button>
-                        <button class="btn-danger" @click="destroy(confirmDelete!)">Yes, delete</button>
+            <Transition
+                enter-active-class="transition duration-200 ease-out"
+                enter-from-class="opacity-0"
+                enter-to-class="opacity-100"
+                leave-active-class="transition duration-150 ease-in"
+                leave-from-class="opacity-100"
+                leave-to-class="opacity-0"
+            >
+                <div
+                    v-if="viewingPost"
+                    class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+                    @click.self="closePost"
+                >
+                    <Transition
+                        enter-active-class="transition duration-200 ease-out"
+                        enter-from-class="opacity-0 scale-95 translate-y-2"
+                        enter-to-class="opacity-100 scale-100 translate-y-0"
+                        leave-active-class="transition duration-150 ease-in"
+                        leave-from-class="opacity-100 scale-100"
+                        leave-to-class="opacity-0 scale-95"
+                        appear
+                    >
+                        <div v-if="viewingPost" class="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
+
+                            <!-- Featured image -->
+                            <div
+                                v-if="viewingPost.featured_image"
+                                class="h-48 bg-cover bg-center shrink-0"
+                                :style="`background-image: url('${viewingPost.featured_image}')`"
+                            ></div>
+                            <div v-else class="h-28 bg-gradient-to-br from-indigo-50 to-indigo-100 flex items-center justify-center shrink-0">
+                                <span class="text-5xl">📄</span>
+                            </div>
+
+                            <!-- Content -->
+                            <div class="flex flex-col gap-4 p-6 overflow-y-auto">
+
+                                <!-- Title + close -->
+                                <div class="flex items-start justify-between gap-3">
+                                    <h2 class="text-lg font-extrabold text-foreground leading-snug">{{ viewingPost.title }}</h2>
+                                    <button
+                                        @click="closePost"
+                                        class="shrink-0 w-8 h-8 rounded-lg bg-muted hover:bg-border flex items-center justify-center text-muted-foreground transition-colors text-sm"
+                                    >✕</button>
+                                </div>
+
+                                <!-- Status badge -->
+                                <div>
+                                    <span :class="['inline-flex items-center text-xs font-semibold px-3 py-1 rounded-full', statusMeta[viewingPost.status]?.cls]">
+                                        {{ statusMeta[viewingPost.status]?.label ?? viewingPost.status }}
+                                    </span>
+                                </div>
+
+                                <!-- Meta grid -->
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div class="bg-muted rounded-xl p-3">
+                                        <div class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Author</div>
+                                        <div class="flex items-center gap-2 mt-1">
+                                            <div class="w-6 h-6 rounded-full bg-indigo-500 text-white text-[10px] font-bold flex items-center justify-center shrink-0">
+                                                {{ viewingPost.user.name.charAt(0).toUpperCase() }}
+                                            </div>
+                                            <span class="text-sm font-semibold text-foreground">{{ viewingPost.user.name }}</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="bg-muted rounded-xl p-3">
+                                        <div class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Published</div>
+                                        <div class="text-sm font-semibold text-foreground mt-1">{{ viewingPost.created_at }}</div>
+                                    </div>
+
+                                    <div class="bg-muted rounded-xl p-3">
+                                        <div class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Category</div>
+                                        <div class="text-sm font-semibold text-foreground mt-1">{{ viewingPost.category ?? '—' }}</div>
+                                    </div>
+
+                                    <div class="bg-muted rounded-xl p-3">
+                                        <div class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Visibility</div>
+                                        <div class="text-sm font-semibold text-foreground capitalize mt-1">{{ viewingPost.visibility ?? '—' }}</div>
+                                    </div>
+
+                                    <div v-if="viewingPost.writer" class="bg-muted rounded-xl p-3 col-span-2">
+                                        <div class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Writer / Byline</div>
+                                        <div class="text-sm font-semibold text-foreground mt-1">{{ viewingPost.writer }}</div>
+                                    </div>
+                                    <div v-if="viewingPost.content" class="bg-muted rounded-xl p-3 col-span-2">
+                                        <div class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">content / Byline</div>
+                                        <div class="text-sm font-semibold text-foreground mt-1">{{ viewingPost.content }}</div>
+                                    </div>
+                                </div>
+
+                                <!-- Action buttons inside modal -->
+                                <div class="flex flex-wrap gap-2 pt-1 border-t border-border">
+                                    <template v-if="viewingPost.status === 'pending'">
+                                        <button
+                                            @click="approve(viewingPost.id)"
+                                            class="flex-1 inline-flex items-center justify-center gap-1.5 text-sm font-semibold px-4 py-2.5 rounded-xl bg-green-500 text-white hover:bg-green-600 transition-all"
+                                        >✓ Approve & Publish</button>
+                                        <button
+                                            @click="reject(viewingPost.id)"
+                                            class="flex-1 inline-flex items-center justify-center gap-1.5 text-sm font-semibold px-4 py-2.5 rounded-xl bg-red-50 text-red-600 border border-red-200 hover:bg-red-600 hover:text-white hover:border-red-600 transition-all"
+                                        >✕ Reject</button>
+                                    </template>
+                                    <template v-else-if="viewingPost.status === 'published'">
+                                        <button
+                                            @click="setPending(viewingPost.id)"
+                                            class="flex-1 inline-flex items-center justify-center gap-1.5 text-sm font-semibold px-4 py-2.5 rounded-xl bg-yellow-50 text-yellow-700 border border-yellow-200 hover:bg-yellow-500 hover:text-white transition-all"
+                                        >↺ Unpublish</button>
+                                    </template>
+                                    <template v-else>
+                                        <button
+                                            @click="approve(viewingPost.id)"
+                                            class="flex-1 inline-flex items-center justify-center gap-1.5 text-sm font-semibold px-4 py-2.5 rounded-xl bg-green-500 text-white hover:bg-green-600 transition-all"
+                                        >↑ Publish</button>
+                                    </template>
+                                    <button
+                                        @click="confirmDelete = viewingPost.id; closePost()"
+                                        class="inline-flex items-center justify-center gap-1.5 text-sm font-semibold px-4 py-2.5 rounded-xl bg-muted text-muted-foreground border border-border hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all"
+                                    >🗑 Delete</button>
+                                </div>
+
+                            </div>
+                        </div>
+                    </Transition>
+                </div>
+            </Transition>
+        </Teleport>
+
+        <!-- ── Delete Confirm Modal ── -->
+        <Teleport to="body">
+            <div
+                v-if="confirmDelete !== null"
+                class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[60]"
+                @click.self="confirmDelete = null"
+            >
+                <div class="bg-card border border-border rounded-2xl p-8 w-[360px] max-w-[90vw] text-center shadow-2xl">
+                    <div class="text-4xl mb-3">🗑️</div>
+                    <h2 class="text-lg font-extrabold text-foreground mb-1">Delete this post?</h2>
+                    <p class="text-sm text-muted-foreground mb-6 leading-relaxed">This action cannot be undone. The post will be permanently removed.</p>
+                    <div class="flex gap-3 justify-center">
+                        <button @click="confirmDelete = null" class="px-5 py-2 text-sm font-semibold border border-border rounded-xl text-muted-foreground hover:border-indigo-400 hover:text-indigo-500 transition-all">Cancel</button>
+                        <button @click="destroy(confirmDelete!)" class="px-5 py-2 text-sm font-semibold bg-red-500 text-white rounded-xl hover:bg-red-600 transition-all shadow-sm">Yes, delete</button>
                     </div>
                 </div>
             </div>
         </Teleport>
+
+    </AppLayout>
 </template>
-
-<style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-
-.page-wrap {
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 1.75rem 1.5rem 3rem;
-    display: flex;
-    flex-direction: column;
-    gap: 1.25rem;
-}
-
-/* Header */
-.page-header { display: flex; justify-content: space-between; align-items: flex-start; }
-.breadcrumb  { display: flex; align-items: center; gap: 0.4rem; font-size: 0.75rem; margin-bottom: 0.3rem; }
-.bc-link     { color: #6366f1; text-decoration: none; font-weight: 500; }
-.bc-link:hover { text-decoration: underline; }
-.bc-sep      { color: #d1d5db; }
-.bc-current  { color: #6b7280; }
-.page-title  {
-    font-size: 1.65rem; font-weight: 800;
-    letter-spacing: -0.035em; color: #111827;
-}
-
-/* Stats strip */
-.stats-strip {
-    display: flex;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-}
-.stat-chip {
-    display: flex; align-items: center; gap: 0.5rem;
-    background: #ffffff;
-    border: 1px solid #e5e7eb;
-    border-radius: 10px;
-    padding: 0.55rem 1rem;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-}
-.pending-chip { border-color: #fde68a; background: #fffbeb; }
-.chip-dot  { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.chip-num  { font-size: 1rem; font-weight: 800; color: #111827; letter-spacing: -0.03em; }
-.chip-lbl  { font-size: 0.75rem; color: #6b7280; }
-
-/* Toolbar */
-.toolbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    flex-wrap: wrap;
-}
-
-/* Tabs */
-.tabs { display: flex; gap: 0.25rem; background: #f3f4f6; padding: 0.25rem; border-radius: 10px; }
-.tab-btn {
-    display: flex; align-items: center; gap: 0.4rem;
-    background: transparent; border: none;
-    padding: 0.4rem 0.85rem;
-    border-radius: 7px;
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 0.78rem; font-weight: 600;
-    color: #6b7280; cursor: pointer;
-    transition: all 0.18s;
-}
-.tab-btn:hover  { background: white; color: #111827; }
-.tab-btn.active { background: white; color: #111827; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
-.tab-count {
-    background: #e5e7eb; color: #6b7280;
-    font-size: 0.68rem; font-weight: 700;
-    padding: 0.1rem 0.45rem;
-    border-radius: 20px;
-    min-width: 20px; text-align: center;
-}
-.tab-btn.active .tab-count { background: #6366f1; color: white; }
-
-/* Search */
-.search-wrap {
-    position: relative;
-    display: flex; align-items: center;
-}
-.search-icon {
-    position: absolute; left: 0.75rem;
-    font-size: 0.85rem; pointer-events: none;
-}
-.search-input {
-    padding: 0.5rem 1rem 0.5rem 2.25rem;
-    border: 1px solid #e5e7eb;
-    border-radius: 10px;
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 0.82rem;
-    color: #111827;
-    background: white;
-    width: 240px;
-    outline: none;
-    transition: border-color 0.2s;
-}
-.search-input:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
-
-/* Table card */
-.table-card {
-    background: white;
-    border-radius: 16px;
-    border: 1px solid #e5e7eb;
-    box-shadow: 0 2px 16px rgba(99,102,241,0.05), 0 1px 4px rgba(0,0,0,0.03);
-    overflow: hidden;
-    animation: fadeUp 0.35s ease both;
-}
-@keyframes fadeUp {
-    from { opacity: 0; transform: translateY(14px); }
-    to   { opacity: 1; transform: translateY(0); }
-}
-
-.posts-table { width: 100%; border-collapse: collapse; }
-.posts-table thead tr {
-    background: #f9fafb;
-    border-bottom: 1px solid #e5e7eb;
-}
-.posts-table th {
-    padding: 0.75rem 1.1rem;
-    text-align: left;
-    font-size: 0.7rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: #9ca3af;
-}
-.posts-table td {
-    padding: 0.9rem 1.1rem;
-    vertical-align: middle;
-    font-size: 0.83rem;
-    color: #374151;
-}
-.post-row { border-bottom: 1px solid #f3f4f6; transition: background 0.15s; }
-.post-row:last-child { border-bottom: none; }
-.post-row:hover { background: #fafafa; }
-
-/* Post title cell */
-.post-title-cell { display: flex; align-items: center; gap: 0.75rem; }
-.post-thumb {
-    width: 40px; height: 40px;
-    border-radius: 8px;
-    background: #f3f4f6 center/cover no-repeat;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1.1rem; flex-shrink: 0;
-    border: 1px solid #e5e7eb;
-}
-.post-title  { font-weight: 600; color: #111827; font-size: 0.85rem; line-height: 1.3; }
-.post-writer { font-size: 0.72rem; color: #9ca3af; margin-top: 2px; }
-
-/* Author cell */
-.author-cell { display: flex; align-items: center; gap: 0.5rem; }
-.mini-avatar {
-    width: 26px; height: 26px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #818cf8, #6366f1);
-    color: white; font-size: 0.65rem; font-weight: 700;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-}
-.author-name { font-size: 0.8rem; font-weight: 500; color: #374151; }
-
-/* Category */
-.category-tag {
-    background: #f3f4f6; color: #6b7280;
-    font-size: 0.72rem; font-weight: 500;
-    padding: 0.2rem 0.6rem; border-radius: 6px;
-}
-.no-cat { color: #d1d5db; }
-
-/* Date */
-.date-cell { color: #9ca3af; font-size: 0.78rem; white-space: nowrap; }
-
-/* Status pills */
-.pill {
-    display: inline-flex; align-items: center;
-    font-size: 0.68rem; font-weight: 600;
-    padding: 0.25rem 0.65rem;
-    border-radius: 20px;
-    white-space: nowrap;
-}
-.pill-green  { background: #dcfce7; color: #16a34a; }
-.pill-yellow { background: #fef3c7; color: #d97706; }
-.pill-indigo { background: rgba(99,102,241,0.1); color: #6366f1; border: 1px solid #e0e0fb; }
-.pill-gray   { background: #f3f4f6; color: #9ca3af; }
-
-/* Action buttons */
-.actions-cell { display: flex; align-items: center; gap: 0.4rem; justify-content: flex-end; }
-
-.action-btn {
-    display: inline-flex; align-items: center; gap: 0.25rem;
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 0.72rem; font-weight: 600;
-    padding: 0.3rem 0.7rem;
-    border-radius: 7px; border: 1px solid transparent;
-    cursor: pointer; transition: all 0.18s;
-    white-space: nowrap;
-}
-.approve-btn { background: #dcfce7; color: #16a34a; border-color: #bbf7d0; }
-.approve-btn:hover { background: #16a34a; color: white; }
-
-.reject-btn  { background: #fee2e2; color: #dc2626; border-color: #fecaca; }
-.reject-btn:hover { background: #dc2626; color: white; }
-
-.pending-btn { background: #fef3c7; color: #d97706; border-color: #fde68a; }
-.pending-btn:hover { background: #d97706; color: white; }
-
-.delete-btn  { background: #f9fafb; color: #9ca3af; border-color: #e5e7eb; padding: 0.3rem 0.55rem; }
-.delete-btn:hover { background: #fee2e2; color: #dc2626; border-color: #fecaca; }
-
-/* Empty state */
-.empty-state { text-align: center; padding: 4rem 1rem !important; }
-.empty-icon  { font-size: 2.5rem; margin-bottom: 0.75rem; }
-.empty-text  { font-size: 1rem; font-weight: 700; color: #374151; }
-.empty-sub   { font-size: 0.82rem; color: #9ca3af; margin-top: 0.25rem; }
-
-/* Pagination */
-.pagination {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 0 0.25rem;
-}
-.page-info  { font-size: 0.8rem; color: #6b7280; }
-.page-total { color: #9ca3af; }
-.page-btns  { display: flex; gap: 0.5rem; }
-.page-btn {
-    padding: 0.45rem 1rem;
-    border-radius: 8px;
-    border: 1px solid #e5e7eb;
-    background: white;
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 0.8rem; font-weight: 600;
-    color: #374151; text-decoration: none;
-    cursor: pointer; transition: all 0.18s;
-    display: inline-flex; align-items: center;
-}
-.page-btn:hover:not(.disabled) { border-color: #6366f1; color: #6366f1; }
-.page-btn.disabled { color: #d1d5db; cursor: default; }
-
-/* Modal */
-.modal-overlay {
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,0.4);
-    backdrop-filter: blur(4px);
-    display: flex; align-items: center; justify-content: center;
-    z-index: 50;
-    animation: fadeIn 0.2s ease;
-}
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-.modal {
-    background: white;
-    border-radius: 18px;
-    padding: 2rem;
-    width: 360px;
-    max-width: 90vw;
-    text-align: center;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
-    animation: popIn 0.25s cubic-bezier(.34,1.56,.64,1);
-}
-@keyframes popIn {
-    from { opacity: 0; transform: scale(0.9); }
-    to   { opacity: 1; transform: scale(1); }
-}
-.modal-icon  { font-size: 2.5rem; margin-bottom: 0.75rem; }
-.modal-title { font-size: 1.1rem; font-weight: 800; color: #111827; margin-bottom: 0.5rem; }
-.modal-sub   { font-size: 0.82rem; color: #6b7280; line-height: 1.5; margin-bottom: 1.5rem; }
-.modal-actions { display: flex; gap: 0.75rem; justify-content: center; }
-
-.btn-ghost {
-    background: transparent; color: #6b7280;
-    border: 1px solid #e5e7eb; border-radius: 10px;
-    padding: 0.55rem 1.25rem;
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 0.85rem; font-weight: 600;
-    cursor: pointer; transition: all 0.18s;
-}
-.btn-ghost:hover { border-color: #6366f1; color: #6366f1; }
-
-.btn-danger {
-    background: #ef4444; color: white;
-    border: none; border-radius: 10px;
-    padding: 0.55rem 1.25rem;
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 0.85rem; font-weight: 600;
-    cursor: pointer; transition: all 0.18s;
-}
-.btn-danger:hover { background: #dc2626; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(239,68,68,0.3); }
-
-/* Responsive */
-@media (max-width: 768px) {
-    .tabs { flex-wrap: wrap; }
-    .search-input { width: 100%; }
-    .toolbar { flex-direction: column; align-items: stretch; }
-    .posts-table th:nth-child(3),
-    .posts-table td:nth-child(3) { display: none; }
-}
-</style>

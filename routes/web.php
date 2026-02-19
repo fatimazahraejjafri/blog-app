@@ -31,15 +31,9 @@ Route::get('/', function () {
 Route::middleware(['auth:web', 'verified'])->group(function () {
 
     // User Dashboard
-    Route::get('/dashboard', function () {
-
-        // If somehow an admin accesses this, redirect properly
-        if (Auth::guard('admin')->check()) {
-            return redirect()->route('admin.dashboard');
-        }
-
-        return Inertia::render('Dashboard');
-    })->name('dashboard');
+   Route::get('/dashboard', [PostController::class, 'feed'])
+    ->middleware(['auth:web', 'verified', 'redirect.admin'])
+    ->name('dashboard');
 
     // User Posts CRUD
     Route::resource('posts', PostController::class);
@@ -100,6 +94,5 @@ Route::post('/logout', function (Request $request) {
 
     return redirect('/');
 })->name('logout');
-
 
 require __DIR__.'/settings.php';

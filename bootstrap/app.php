@@ -23,7 +23,6 @@ return Application::configure(basePath: dirname(__DIR__))
             AddLinkHeadersForPreloadedAssets::class,
         ]);
 
-        // Add the alias here
         $middleware->alias([
             'redirect.admin' => RedirectIfAdmin::class,
         ]);

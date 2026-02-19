@@ -13,8 +13,7 @@ class PostController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Post::with(['user', 'category', 'tags', 'media']);
-
+        $query = Post::with(['user', 'category', 'tags', 'media'])->where('user_id', Auth::id());
         // Filter by status
         if ($request->has('status') && $request->status !== 'all') {
             $query->where('status', $request->status);
@@ -205,4 +204,28 @@ public function show(Post $post)
         return redirect()->route('posts.index')
             ->with('success', 'Post deleted successfully!');
     }
+ public function feed()
+{
+    $posts = Post::with(['user', 'category', 'tags', 'media'])
+        ->where('status', 'published')
+        ->where('visibility', 'public')
+        ->latest('published_at')
+        ->get()
+        ->map(function ($post) {
+            return [
+                'id' => $post->id,
+                'title' => $post->title,
+                'content' => $post->content,
+                'writer' => $post->writer,
+                'published_at' => $post->published_at?->format('M d, Y'),
+                'created_at' => $post->created_at->format('M d, Y'),
+                'user' => ['name' => $post->user->name],
+                'category' => $post->category ? ['id' => $post->category->id, 'name' => $post->category->name] : null,
+                'tags' => $post->tags->map(fn($tag) => ['id' => $tag->id, 'name' => $tag->name]),
+                'featured_image' => $post->getFirstMediaUrl('featured_image'),
+            ];
+        });
+
+    return Inertia::render('Dashboard', ['posts' => $posts]);
+}
 }

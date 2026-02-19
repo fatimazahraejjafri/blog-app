@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { router, Link } from '@inertiajs/vue3';
+import { Link } from '@inertiajs/vue3';
 import AppLayout from '@/layouts/AppLayout.vue';
 import Chart from 'chart.js/auto';
 
@@ -12,41 +12,36 @@ interface Stats {
     topAuthors: AuthorStat[];
 }
 
-const props = defineProps({ admin: Object });
+const props = defineProps<{ admin: { name: string } }>();
 
 const stats = ref<Stats>({
     total: 0, published: 0, pending: 0,
     draft: 0, archived: 0, thisMonth: 0, topAuthors: [],
 });
 const recentPosts = ref<PostSummary[]>([]);
-const trendLabels  = ref<string[]>([]);
-const trendData    = ref<number[]>([]);
 
 const monthLabel = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
 
-const authorColors = [
-    'linear-gradient(135deg,#818cf8,#6366f1)',
-    'linear-gradient(135deg,#34d399,#059669)',
-    'linear-gradient(135deg,#fbbf24,#f59e0b)',
-    'linear-gradient(135deg,#f87171,#ef4444)',
+const authorGradients = [
+    'from-indigo-400 to-indigo-600',
+    'from-emerald-400 to-emerald-600',
+    'from-amber-400 to-amber-500',
+    'from-rose-400 to-rose-500',
 ];
 
-const statusIcon: Record<string, string> = {
-    published: '📄', pending: '⏳', draft: '✏️', archived: '🗄️',
-};
-const statusBg: Record<string, string> = {
-    published: '#dcfce7', pending: '#fef3c7', draft: 'rgba(99,102,241,0.08)', archived: '#f3f4f6',
+const statusMeta: Record<string, { icon: string; bg: string; pill: string }> = {
+    published: { icon: '📄', bg: 'bg-green-50',  pill: 'bg-green-100 text-green-700' },
+    pending:   { icon: '⏳', bg: 'bg-yellow-50', pill: 'bg-yellow-100 text-yellow-700' },
+    draft:     { icon: '✏️', bg: 'bg-indigo-50', pill: 'bg-indigo-50 text-indigo-600 ring-1 ring-indigo-200' },
+    archived:  { icon: '🗄️', bg: 'bg-muted',     pill: 'bg-gray-100 text-gray-500' },
 };
 
 function initials(name: string) {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 }
-
 function maxCount(authors: AuthorStat[]) {
     return Math.max(...authors.map(a => a.count), 1);
 }
-
-const logout = () => router.post('/logout');
 
 onMounted(async () => {
     try {
@@ -55,10 +50,8 @@ onMounted(async () => {
 
         stats.value       = data.stats;
         recentPosts.value = data.recent;
-        trendLabels.value  = data.trend.labels;
-        trendData.value    = data.trend.data;
 
-        // Bar chart — posts trend
+        // Bar chart
         const trendCtx = document.getElementById('trendChart') as HTMLCanvasElement;
         if (trendCtx) {
             new Chart(trendCtx, {
@@ -84,8 +77,6 @@ onMounted(async () => {
                             backgroundColor: '#111827',
                             padding: 10,
                             cornerRadius: 8,
-                            titleFont: { family: 'Plus Jakarta Sans', weight: 'bold' },
-                            bodyFont:  { family: 'Plus Jakarta Sans' },
                         },
                     },
                     scales: {
@@ -107,13 +98,8 @@ onMounted(async () => {
                 type: 'doughnut',
                 data: {
                     datasets: [{
-                        data: [
-                            data.stats.published,
-                            data.stats.pending,
-                            data.stats.draft,
-                            data.stats.archived,
-                        ],
-                        backgroundColor: ['#22c55e','#f59e0b','#6366f1','#ef4444'],
+                        data: [data.stats.published, data.stats.pending, data.stats.draft, data.stats.archived],
+                        backgroundColor: ['#22c55e', '#f59e0b', '#6366f1', '#ef4444'],
                         borderWidth: 0,
                         hoverOffset: 4,
                     }],
@@ -134,414 +120,192 @@ onMounted(async () => {
 </script>
 
 <template>
-        <div class="dash-wrap">
+    <AppLayout title="Admin Dashboard">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col gap-6">
 
-            <!-- ── Top bar ── -->
-            <div class="topbar">
+            <!-- Header -->
+            <div class="flex items-start justify-between">
                 <div>
-                    <h1 class="topbar-title">Overview</h1>
-                    <p class="topbar-sub">Welcome back, {{ admin?.name }}</p>
+                    <h1 class="text-2xl font-extrabold tracking-tight text-foreground">Overview</h1>
+                    <p class="text-sm text-muted-foreground mt-0.5">Welcome back, {{ admin.name }}</p>
                 </div>
-                <div class="topbar-actions">
-                    <Link href="/admin/posts" class="btn-primary">↗ Manage Posts</Link>
-                    <button class="btn-ghost" @click="logout">Logout</button>
+                <div class="flex items-center gap-2">
+                    <Link href="/admin/posts" class="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-semibold rounded-xl transition-all shadow-sm">
+                        ↗ Manage Posts
+                    </Link>
+                   
                 </div>
             </div>
 
-            <!-- ── Top grid ── -->
-            <div class="top-grid">
+            <!-- Top grid: chart | stats | authors -->
+            <div class="grid grid-cols-1 lg:grid-cols-[2fr_1fr_1fr] gap-4">
 
                 <!-- Trend chart -->
-                <div class="card trend-card">
-                    <div class="card-header">
+                <div class="bg-card border border-border rounded-2xl p-5 shadow-sm">
+                    <div class="flex items-start justify-between mb-4">
                         <div>
-                            <div class="card-label">Posts Analytics</div>
-                            <div class="chart-legend">
-                                <span class="legend-dot" style="background:#6366f1;"></span> Published
+                            <div class="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Posts Analytics</div>
+                            <div class="flex items-center gap-1.5 mt-1 text-xs text-muted-foreground">
+                                <span class="w-2 h-2 rounded-full bg-indigo-500 inline-block"></span> Posts created
                             </div>
                         </div>
                     </div>
-                    <div class="chart-wrap">
+                    <div class="h-44 relative">
                         <canvas id="trendChart"></canvas>
                     </div>
                 </div>
 
                 <!-- Stats card -->
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-label">Total Posts</div>
-                        <div class="card-icon" style="background:rgba(99,102,241,0.08);">📊</div>
+                <div class="bg-card border border-border rounded-2xl p-5 shadow-sm flex flex-col gap-4">
+                    <div class="flex items-start justify-between">
+                        <div class="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Total Posts</div>
+                        <div class="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center text-base">📊</div>
                     </div>
-                    <div>
-                        <span class="card-big-num">{{ stats.total }}</span>
+                    <div class="text-4xl font-extrabold tracking-tight text-foreground leading-none">{{ stats.total }}</div>
+                    <div class="grid grid-cols-2 gap-x-3 gap-y-2">
+                        <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <span class="w-2 h-2 rounded-full bg-green-500 shrink-0"></span>
+                            Published <strong class="text-foreground ml-auto">{{ stats.published }}</strong>
+                        </div>
+                        <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <span class="w-2 h-2 rounded-full bg-yellow-400 shrink-0"></span>
+                            Pending <strong class="text-foreground ml-auto">{{ stats.pending }}</strong>
+                        </div>
+                        <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <span class="w-2 h-2 rounded-full bg-indigo-500 shrink-0"></span>
+                            Draft <strong class="text-foreground ml-auto">{{ stats.draft }}</strong>
+                        </div>
+                        <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <span class="w-2 h-2 rounded-full bg-red-400 shrink-0"></span>
+                            Archived <strong class="text-foreground ml-auto">{{ stats.archived }}</strong>
+                        </div>
                     </div>
-                    <div class="status-dots">
-                        <div class="dot-item"><span class="dot" style="background:#22c55e;"></span>Published <strong>{{ stats.published }}</strong></div>
-                        <div class="dot-item"><span class="dot" style="background:#f59e0b;"></span>Pending <strong>{{ stats.pending }}</strong></div>
-                        <div class="dot-item"><span class="dot" style="background:#6366f1;"></span>Draft <strong>{{ stats.draft }}</strong></div>
-                        <div class="dot-item"><span class="dot" style="background:#ef4444;"></span>Archived <strong>{{ stats.archived }}</strong></div>
+                    <div class="border-t border-border pt-4">
+                        <div class="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">This Month</div>
+                        <div class="text-3xl font-extrabold tracking-tight text-foreground leading-none">{{ stats.thisMonth }}</div>
+                        <div class="text-xs text-muted-foreground mt-1">{{ monthLabel }}</div>
                     </div>
-                    <div class="divider"></div>
-                    <div class="card-label">Posts This Month</div>
-                    <div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.25rem;">
-                        <span class="card-big-num" style="font-size:1.9rem;">{{ stats.thisMonth }}</span>
-                    </div>
-                    <div class="month-label">{{ monthLabel }}</div>
                 </div>
 
-                <!-- Top authors + donut -->
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-label">Top Authors</div>
-                        <div class="card-icon" style="background:#fef3c7;">👥</div>
+                <!-- Top Authors + donut -->
+                <div class="bg-card border border-border rounded-2xl p-5 shadow-sm flex flex-col gap-4">
+                    <div class="flex items-start justify-between">
+                        <div class="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Top Authors</div>
+                        <div class="w-9 h-9 rounded-xl bg-yellow-50 flex items-center justify-center text-base">👥</div>
                     </div>
-                    <div class="authors-list">
-                        <div
-                            v-for="(author, i) in stats.topAuthors.slice(0, 3)"
-                            :key="author.id"
-                            class="author-row"
-                        >
-                            <div class="author-avatar" :style="{ background: authorColors[i] }">
+                    <div class="flex flex-col gap-2.5">
+                        <div v-for="(author, i) in stats.topAuthors.slice(0, 3)" :key="author.id" class="flex items-center gap-2.5">
+                            <div :class="['w-8 h-8 rounded-full bg-gradient-to-br text-white text-[11px] font-bold flex items-center justify-center shrink-0', authorGradients[i]]">
                                 {{ initials(author.name) }}
                             </div>
-                            <span class="author-name">{{ author.name }}</span>
-                            <span class="author-pill">{{ author.count }} posts</span>
+                            <span class="text-sm font-semibold text-foreground flex-1 truncate">{{ author.name }}</span>
+                            <span class="text-[11px] font-semibold bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full">{{ author.count }} posts</span>
                         </div>
-                        <p v-if="!stats.topAuthors.length" class="empty-text">No authors yet</p>
+                        <p v-if="!stats.topAuthors.length" class="text-xs text-muted-foreground">No authors yet</p>
                     </div>
 
-                    <div class="divider"></div>
-                    <div class="card-label" style="margin-bottom:0.75rem;">Status Breakdown</div>
-                    <div class="donut-wrap">
-                        <div class="donut-canvas-wrap">
-                            <canvas id="donutChart"></canvas>
-                            <div class="donut-center">
-                                <div class="donut-num">{{ stats.total }}</div>
-                                <div class="donut-lbl">total</div>
+                    <!-- Donut -->
+                    <div class="border-t border-border pt-4">
+                        <div class="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-3">Status Breakdown</div>
+                        <div class="flex items-center gap-4">
+                            <div class="relative w-[90px] h-[90px] shrink-0">
+                                <canvas id="donutChart"></canvas>
+                                <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                    <span class="text-lg font-extrabold text-foreground leading-none">{{ stats.total }}</span>
+                                    <span class="text-[10px] text-muted-foreground">total</span>
+                                </div>
                             </div>
-                        </div>
-                        <div class="donut-legend">
-                            <div class="legend-row"><span class="legend-sq" style="background:#22c55e;"></span><span class="legend-lbl">Published</span><span class="legend-val">{{ stats.published }}</span></div>
-                            <div class="legend-row"><span class="legend-sq" style="background:#f59e0b;"></span><span class="legend-lbl">Pending</span><span class="legend-val">{{ stats.pending }}</span></div>
-                            <div class="legend-row"><span class="legend-sq" style="background:#6366f1;"></span><span class="legend-lbl">Draft</span><span class="legend-val">{{ stats.draft }}</span></div>
-                            <div class="legend-row"><span class="legend-sq" style="background:#ef4444;"></span><span class="legend-lbl">Archived</span><span class="legend-val">{{ stats.archived }}</span></div>
+                            <div class="flex flex-col gap-1.5 flex-1">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="w-2.5 h-2.5 rounded-sm bg-green-500 shrink-0"></span>
+                                    <span class="text-xs text-muted-foreground flex-1">Published</span>
+                                    <span class="text-xs font-bold text-foreground">{{ stats.published }}</span>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="w-2.5 h-2.5 rounded-sm bg-yellow-400 shrink-0"></span>
+                                    <span class="text-xs text-muted-foreground flex-1">Pending</span>
+                                    <span class="text-xs font-bold text-foreground">{{ stats.pending }}</span>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="w-2.5 h-2.5 rounded-sm bg-indigo-500 shrink-0"></span>
+                                    <span class="text-xs text-muted-foreground flex-1">Draft</span>
+                                    <span class="text-xs font-bold text-foreground">{{ stats.draft }}</span>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="w-2.5 h-2.5 rounded-sm bg-red-400 shrink-0"></span>
+                                    <span class="text-xs text-muted-foreground flex-1">Archived</span>
+                                    <span class="text-xs font-bold text-foreground">{{ stats.archived }}</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- ── Bottom grid ── -->
-            <div class="bottom-grid">
+            <!-- Bottom grid: recent activity | author bars -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
                 <!-- Recent Activity -->
-                <div class="card">
-                    <div class="card-header">
+                <div class="bg-card border border-border rounded-2xl p-5 shadow-sm">
+                    <div class="flex items-center justify-between mb-4">
                         <div>
-                            <div class="card-label">Recent Activity</div>
-                            <div style="font-size:0.85rem;font-weight:700;color:#111827;margin-top:0.1rem;">Latest Posts</div>
+                            <div class="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Recent Activity</div>
+                            <div class="text-sm font-bold text-foreground mt-0.5">Latest Posts</div>
                         </div>
-                        <Link href="/admin/posts" class="btn-ghost" style="font-size:0.75rem;padding:0.35rem 0.8rem;">View all ↗</Link>
+                        <Link href="/admin/posts" class="text-xs font-semibold text-indigo-500 hover:underline">View all ↗</Link>
                     </div>
-                    <div class="activity-list">
-                        <div
-                            v-for="post in recentPosts"
-                            :key="post.id"
-                            class="activity-item"
-                        >
-                            <div class="activity-icon" :style="{ background: statusBg[post.status] ?? '#f3f4f6' }">
-                                {{ statusIcon[post.status] ?? '📄' }}
+                    <div class="flex flex-col divide-y divide-border">
+                        <div v-for="post in recentPosts" :key="post.id" class="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
+                            <div :class="['w-9 h-9 rounded-xl flex items-center justify-center text-base shrink-0', statusMeta[post.status]?.bg ?? 'bg-muted']">
+                                {{ statusMeta[post.status]?.icon ?? '📄' }}
                             </div>
-                            <div class="activity-info">
-                                <div class="activity-title">{{ post.title }}</div>
+                            <div class="flex-1 min-w-0">
+                                <div class="text-sm font-semibold text-foreground truncate">{{ post.title }}</div>
                             </div>
-                            <span class="status-pill" :class="post.status">{{ post.status }}</span>
+                            <span :class="['inline-flex items-center text-[11px] font-semibold px-2.5 py-1 rounded-full capitalize shrink-0', statusMeta[post.status]?.pill ?? 'bg-gray-100 text-gray-500']">
+                                {{ post.status }}
+                            </span>
                         </div>
-                        <p v-if="!recentPosts.length" class="empty-text">No recent posts</p>
+                        <p v-if="!recentPosts.length" class="text-xs text-muted-foreground py-4 text-center">No recent posts</p>
                     </div>
                 </div>
 
-                <!-- Author bars -->
-                <div class="card">
-                    <div class="card-header">
-                        <div>
-                            <div class="card-label">Author Performance</div>
-                            <div style="font-size:0.85rem;font-weight:700;color:#111827;margin-top:0.1rem;">Post contributions</div>
-                        </div>
+                <!-- Author performance bars -->
+                <div class="bg-card border border-border rounded-2xl p-5 shadow-sm">
+                    <div class="mb-4">
+                        <div class="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Author Performance</div>
+                        <div class="text-sm font-bold text-foreground mt-0.5">Post contributions</div>
                     </div>
-                    <div class="bars-list">
-                        <div
-                            v-for="(author, i) in stats.topAuthors.slice(0, 4)"
-                            :key="author.id"
-                            class="bar-row"
-                        >
-                            <div class="bar-meta">
-                                <span>{{ author.name }}</span>
-                                <span class="bar-count">{{ author.count }} posts</span>
+                    <div class="flex flex-col gap-4">
+                        <div v-for="(author, i) in stats.topAuthors.slice(0, 4)" :key="author.id">
+                            <div class="flex justify-between text-xs font-semibold mb-1.5">
+                                <span class="text-foreground">{{ author.name }}</span>
+                                <span class="text-indigo-500">{{ author.count }} posts</span>
                             </div>
-                            <div class="bar-track">
+                            <div class="h-1.5 bg-muted rounded-full overflow-hidden">
                                 <div
-                                    class="bar-fill"
-                                    :style="{
-                                        width: (author.count / maxCount(stats.topAuthors) * 100) + '%',
-                                        background: ['linear-gradient(90deg,#818cf8,#6366f1)','linear-gradient(90deg,#34d399,#059669)','linear-gradient(90deg,#fbbf24,#f59e0b)','linear-gradient(90deg,#f87171,#ef4444)'][i]
-                                    }"
+                                    class="h-full rounded-full transition-all duration-700"
+                                    :class="['bg-gradient-to-r', ['from-indigo-400 to-indigo-600','from-emerald-400 to-emerald-600','from-amber-400 to-amber-500','from-rose-400 to-rose-500'][i]]"
+                                    :style="{ width: (author.count / maxCount(stats.topAuthors) * 100) + '%' }"
                                 ></div>
                             </div>
                         </div>
-                        <p v-if="!stats.topAuthors.length" class="empty-text">No data yet</p>
+                        <p v-if="!stats.topAuthors.length" class="text-xs text-muted-foreground">No data yet</p>
                     </div>
                 </div>
             </div>
 
-            <!-- ── Export bar ── -->
-            <div class="export-bar">
+            <!-- Export bar -->
+            <div class="bg-foreground rounded-2xl px-6 py-4 flex items-center justify-between">
                 <div>
-                    <div style="font-weight:700;color:white;font-size:0.95rem;">Export your dashboard statistics</div>
-                    <div style="color:rgba(255,255,255,0.55);font-size:0.8rem;margin-top:2px;">Download a full report of posts, authors and trends</div>
+                    <div class="text-sm font-bold text-background">Export your dashboard statistics</div>
+                    <div class="text-xs text-background/50 mt-0.5">Download a full report of posts, authors and trends</div>
                 </div>
-                <button class="btn-export">⬇ Export statistics</button>
+                <button class="px-5 py-2 bg-background text-foreground text-sm font-bold rounded-xl hover:shadow-lg transition-all">
+                    ⬇ Export statistics
+                </button>
             </div>
 
         </div>
+    </AppLayout>
 </template>
-
-<style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
-
-.dash-wrap {
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 1.75rem 1.5rem 2.5rem;
-    display: flex;
-    flex-direction: column;
-    gap: 1.4rem;
-}
-
-/* Topbar */
-.topbar { display: flex; justify-content: space-between; align-items: flex-start; }
-.topbar-title { font-size: 1.75rem; font-weight: 800; letter-spacing: -0.035em; color: #111827; }
-.topbar-sub   { font-size: 0.8rem; color: #6b7280; margin-top: 2px; }
-.topbar-actions { display: flex; gap: 0.75rem; align-items: center; }
-
-/* Buttons */
-.btn-primary {
-    background: #6366f1;
-    color: white;
-    border: none;
-    border-radius: 10px;
-    padding: 0.5rem 1.1rem;
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 0.82rem;
-    font-weight: 600;
-    cursor: pointer;
-    text-decoration: none;
-    display: inline-flex; align-items: center; gap: 0.4rem;
-    transition: all 0.2s;
-}
-.btn-primary:hover { background: #4f46e5; transform: translateY(-1px); box-shadow: 0 4px 14px rgba(99,102,241,0.35); }
-
-.btn-ghost {
-    background: transparent;
-    color: #6b7280;
-    border: 1px solid #e5e7eb;
-    border-radius: 10px;
-    padding: 0.5rem 1.1rem;
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 0.82rem;
-    font-weight: 500;
-    cursor: pointer;
-    text-decoration: none;
-    display: inline-flex; align-items: center;
-    transition: all 0.2s;
-}
-.btn-ghost:hover { border-color: #6366f1; color: #6366f1; }
-
-/* Cards */
-.card {
-    background: #ffffff;
-    border-radius: 16px;
-    border: 1px solid rgba(229,231,235,0.8);
-    box-shadow: 0 2px 16px rgba(99,102,241,0.06), 0 1px 4px rgba(0,0,0,0.04);
-    padding: 1.4rem;
-    animation: slideUp 0.4s ease both;
-}
-
-@keyframes slideUp {
-    from { opacity: 0; transform: translateY(16px); }
-    to   { opacity: 1; transform: translateY(0); }
-}
-
-.card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 1rem;
-}
-.card-label {
-    font-size: 0.7rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.09em;
-    color: #6b7280;
-}
-.card-icon {
-    width: 36px; height: 36px;
-    border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1rem;
-}
-.card-big-num {
-    font-size: 2.5rem;
-    font-weight: 800;
-    letter-spacing: -0.045em;
-    color: #111827;
-    line-height: 1;
-}
-.divider { height: 1px; background: #f3f4f6; margin: 1rem 0; }
-.month-label { font-size: 0.72rem; color: #9ca3af; margin-top: 0.2rem; }
-.empty-text  { font-size: 0.8rem; color: #9ca3af; padding: 0.5rem 0; }
-
-/* Grids */
-.top-grid {
-    display: grid;
-    grid-template-columns: 2fr 1fr 1fr;
-    gap: 1.25rem;
-}
-.bottom-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1.25rem;
-}
-
-/* Chart */
-.chart-wrap { height: 185px; position: relative; }
-.chart-legend {
-    display: flex; align-items: center; gap: 0.4rem;
-    font-size: 0.73rem; color: #6b7280; margin-top: 0.25rem;
-}
-.legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-
-/* Status dots */
-.status-dots {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.45rem 0.75rem;
-    margin-top: 0.9rem;
-}
-.dot-item {
-    display: flex; align-items: center; gap: 0.4rem;
-    font-size: 0.73rem; color: #6b7280;
-}
-.dot-item strong { color: #111827; margin-left: 2px; }
-.dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-
-/* Authors */
-.authors-list { display: flex; flex-direction: column; gap: 0.55rem; }
-.author-row   { display: flex; align-items: center; gap: 0.55rem; }
-.author-avatar {
-    width: 30px; height: 30px;
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 0.68rem; font-weight: 700; color: white;
-    flex-shrink: 0;
-}
-.author-name { font-size: 0.8rem; font-weight: 600; color: #111827; flex: 1; }
-.author-pill {
-    background: #e0e0fb;
-    color: #6366f1;
-    font-size: 0.68rem; font-weight: 600;
-    padding: 0.2rem 0.55rem;
-    border-radius: 20px;
-}
-
-/* Donut */
-.donut-wrap        { display: flex; align-items: center; gap: 1rem; }
-.donut-canvas-wrap { position: relative; width: 110px; height: 110px; flex-shrink: 0; }
-.donut-center {
-    position: absolute; top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    text-align: center;
-}
-.donut-num { font-size: 1.35rem; font-weight: 800; letter-spacing: -0.04em; color: #111827; }
-.donut-lbl { font-size: 0.62rem; color: #9ca3af; }
-.donut-legend { display: flex; flex-direction: column; gap: 0.45rem; flex: 1; }
-.legend-row   { display: flex; align-items: center; gap: 0.45rem; }
-.legend-sq    { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
-.legend-lbl   { font-size: 0.73rem; color: #6b7280; flex: 1; }
-.legend-val   { font-size: 0.73rem; font-weight: 700; color: #111827; }
-
-/* Activity */
-.activity-list { display: flex; flex-direction: column; gap: 0; }
-.activity-item {
-    display: flex; align-items: center;
-    padding: 0.65rem 0;
-    border-bottom: 1px solid #f3f4f6;
-    gap: 0.75rem;
-}
-.activity-item:last-child { border-bottom: none; padding-bottom: 0; }
-.activity-item:first-child { padding-top: 0; }
-.activity-icon {
-    width: 34px; height: 34px;
-    border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1rem;
-    flex-shrink: 0;
-}
-.activity-info  { flex: 1; min-width: 0; }
-.activity-title {
-    font-size: 0.82rem; font-weight: 600; color: #111827;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-
-/* Status pills */
-.status-pill {
-    font-size: 0.67rem; font-weight: 600;
-    padding: 0.25rem 0.65rem;
-    border-radius: 20px;
-    text-transform: capitalize;
-    flex-shrink: 0;
-}
-.status-pill.published { background: #dcfce7; color: #16a34a; }
-.status-pill.pending   { background: #fef3c7; color: #d97706; }
-.status-pill.draft     { background: rgba(99,102,241,0.08); color: #6366f1; border: 1px solid #e0e0fb; }
-.status-pill.archived  { background: #f3f4f6; color: #9ca3af; }
-
-/* Author bars */
-.bars-list { display: flex; flex-direction: column; gap: 1rem; margin-top: 0.25rem; }
-.bar-row   {}
-.bar-meta  { display: flex; justify-content: space-between; font-size: 0.78rem; font-weight: 600; margin-bottom: 0.3rem; color: #111827; }
-.bar-count { color: #6366f1; }
-.bar-track { height: 7px; background: #f3f4f6; border-radius: 10px; overflow: hidden; }
-.bar-fill  { height: 100%; border-radius: 10px; transition: width 1s cubic-bezier(.4,0,.2,1); }
-
-/* Export bar */
-.export-bar {
-    background: #111827;
-    border-radius: 14px;
-    padding: 1.1rem 1.5rem;
-    display: flex; align-items: center; justify-content: space-between;
-}
-.btn-export {
-    background: white; color: #111827;
-    border: none; border-radius: 10px;
-    padding: 0.55rem 1.2rem;
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 0.82rem; font-weight: 700;
-    cursor: pointer;
-    display: flex; align-items: center; gap: 0.4rem;
-    transition: all 0.2s;
-}
-.btn-export:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,0,0,0.25); }
-
-/* Responsive */
-@media (max-width: 1024px) {
-    .top-grid    { grid-template-columns: 1fr 1fr; }
-    .trend-card  { grid-column: 1 / -1; }
-}
-@media (max-width: 640px) {
-    .top-grid    { grid-template-columns: 1fr; }
-    .bottom-grid { grid-template-columns: 1fr; }
-    .topbar      { flex-direction: column; gap: 1rem; }
-}
-</style>

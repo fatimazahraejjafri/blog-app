@@ -31,6 +31,7 @@ class PostController extends Controller
                 'writer' => $post->writer,
                 'status' => $post->status,
                 'visibility' => $post->visibility,
+                'content' => $post->content,
                 'created_at' => $post->created_at->format('M d, Y'),
                 'user' => ['name' => $post->user->name],
                 'category' => $post->category?->name,

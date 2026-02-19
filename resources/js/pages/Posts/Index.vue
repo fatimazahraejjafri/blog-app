@@ -186,8 +186,7 @@ const getVisibilityIcon = (visibility) => {
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                     {{ post.created_at }}
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <!-- 👇 Only change here - added ModalLink for View -->
+                                <td >
                                     <ModalLink
                                         :href="`/posts/${post.id}`"
                                         class="text-gray-600 hover:text-gray-900 dark:text-gray-400 mr-3"
