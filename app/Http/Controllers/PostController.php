@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Auth;
 
 class PostController extends Controller
 {
+
     public function index(Request $request)
     {
         $query = Post::with(['user', 'category', 'tags', 'media'])->where('user_id', Auth::id());

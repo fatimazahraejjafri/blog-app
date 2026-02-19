@@ -8,10 +8,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Illuminate\Support\Str;
+use Spatie\Translatable\HasTranslations;
+
 
 class Post extends Model implements HasMedia
 {
     use InteractsWithMedia;
+    use HasTranslations;
 
     protected $fillable = [
         'user_id',

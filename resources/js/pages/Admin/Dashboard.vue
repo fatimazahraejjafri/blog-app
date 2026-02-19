@@ -4,6 +4,7 @@ import { Link } from '@inertiajs/vue3';
 import AppLayout from '@/layouts/AppLayout.vue';
 import Chart from 'chart.js/auto';
 
+
 interface AuthorStat  { id: number; name: string; count: number; }
 interface PostSummary { id: number; title: string; status: string; }
 interface Stats {
