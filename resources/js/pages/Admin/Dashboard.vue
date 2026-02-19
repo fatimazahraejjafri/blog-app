@@ -99,7 +99,7 @@ onMounted(async () => {
                 data: {
                     datasets: [{
                         data: [data.stats.published, data.stats.pending, data.stats.draft, data.stats.archived],
-                        backgroundColor: ['#22c55e', '#f59e0b', '#6366f1', '#ef4444'],
+                        backgroundColor: ['#22c55f', '#f59e0b', '#6366f1', '#ef4444'],
                         borderWidth: 0,
                         hoverOffset: 4,
                     }],
