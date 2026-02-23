@@ -35,6 +35,7 @@ const form = useForm({
     status: props.post.status,
     tags: props.post.tags || [],
     featured_image: null,
+    attachments: [],
 });
 
 const imagePreview = ref(props.post.featured_image || null);
@@ -82,7 +83,6 @@ const submit = () => {
 
 <template>
     <div class="space-y-6">
-        <!-- Title -->
         <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Title <span class="text-red-500">*</span>
@@ -97,13 +97,11 @@ const submit = () => {
             <p v-if="form.errors.title" class="mt-1 text-sm text-red-500">{{ form.errors.title }}</p>
         </div>
 
-        <!-- Featured Image -->
         <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Featured Image
             </label>
             
-            <!-- Image Preview -->
             <div v-if="imagePreview" class="mb-4">
                 <div class="relative inline-block">
                     <img :src="imagePreview" alt="Preview" class="h-48 w-auto rounded-lg shadow-md" />
@@ -119,7 +117,6 @@ const submit = () => {
                 </div>
             </div>
 
-            <!-- Upload Button -->
             <div v-else class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center hover:border-indigo-500 transition cursor-pointer" @click="selectImage">
                 <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -140,9 +137,7 @@ const submit = () => {
             <p v-if="form.errors.featured_image" class="mt-1 text-sm text-red-500">{{ form.errors.featured_image }}</p>
         </div>
 
-        <!-- Category & Writer Row -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <!-- Category -->
             <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Category
@@ -159,7 +154,6 @@ const submit = () => {
                 <p v-if="form.errors.category_id" class="mt-1 text-sm text-red-500">{{ form.errors.category_id }}</p>
             </div>
 
-            <!-- Writer -->
             <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Writer/Author
@@ -173,8 +167,17 @@ const submit = () => {
                 <p v-if="form.errors.writer" class="mt-1 text-sm text-red-500">{{ form.errors.writer }}</p>
             </div>
         </div>
+        <div>
+            <label class="block text-sm font-medium mb-2">
+                Attachments
+            </label>
 
-        <!-- Tags -->
+            <input
+                type="file"
+                multiple
+                @change="e => form.attachments = e.target.files"
+            />
+        </div>
         <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Tags

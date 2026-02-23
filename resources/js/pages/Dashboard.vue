@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue';
-import { Link } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/layouts/AppLayout.vue';
 
 const props = defineProps({
@@ -14,7 +14,7 @@ const toggleExpand = (id) => {
 };
 
 const timeAgo = (dateStr) => {
-    return dateStr; // already formatted from backend
+    return dateStr; 
 };
 
 const getInitials = (name) => {
@@ -41,8 +41,8 @@ const avatarColor = (name) => {
                 <!-- Page Header -->
                 <div class="mb-8 flex items-center justify-between">
                     <div>
-                        <h1 class="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Your Feed</h1>
-                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Latest published posts</p>
+<h1 class="text-2xl font-bold ...">{{ $t('app', 'Feed') }}</h1>
+<p class="text-sm ...">{{ $t('app', 'latest posts') }}</p>
                     </div>
                     <Link
                         href="/posts/create"
@@ -51,8 +51,23 @@ const avatarColor = (name) => {
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                         </svg>
-                        New Post
-                    </Link>
+{{ $t('app', 'new post') }}                    </Link>
+                    <div>
+                        <!-- Replace the static select in the header -->
+<div class="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-full p-1">
+    <Link
+        v-for="lang in $page.props.languages"
+        :key="lang.code"
+        :href="`/locale/${lang.code}`"
+        :class="$page.props.locale === lang.code
+            ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-white shadow font-semibold'
+            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'"
+        class="px-3 py-1 rounded-full text-sm transition-all duration-200"
+    >
+        {{ lang.name }}
+    </Link>
+</div>
+                    </div>
                 </div>
 
                 <!-- Empty State -->
@@ -89,8 +104,7 @@ const avatarColor = (name) => {
                             </div>
                             <!-- Visibility badge -->
                             <span class="text-xs px-2 py-1 rounded-full bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 font-medium border border-green-100 dark:border-green-800">
-                                Published
-                            </span>
+                                {{ $t('app', 'published') }}                            </span>
                         </div>
 
                         <!-- Featured Image -->
@@ -116,8 +130,7 @@ const avatarColor = (name) => {
                                     @click="toggleExpand(post.id)"
                                     class="text-indigo-500 hover:text-indigo-600 text-sm font-medium mt-1 focus:outline-none"
                                 >
-                                    {{ expandedPosts[post.id] ? 'Show less' : 'Read more' }}
-                                </button>
+                                {{ expandedPosts[post.id] ? $t('app', 'show_less') : $t('app', 'Read more') }}                                </button>
                             </div>
                         </div>
 

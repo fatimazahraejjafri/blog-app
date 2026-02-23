@@ -25,8 +25,20 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'redirect.admin' => RedirectIfAdmin::class,
+            'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
+            'role'       => \Spatie\Permission\Middleware\RoleMiddleware::class,
+
+
         ]);
+        
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
-    })->create();
+    })
+    ->create();
+    $middleware->web(append: [
+    HandleAppearance::class,
+    HandleInertiaRequests::class,
+    AddLinkHeadersForPreloadedAssets::class,
+    \App\Http\Middleware\SetLocale::class,   // ✅ add this
+]);

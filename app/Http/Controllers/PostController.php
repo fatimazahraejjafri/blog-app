@@ -123,8 +123,8 @@ public function show(Post $post)
         'category_id' => $validated['category_id'] ?? null,
         'writer' => $validated['writer'] ?? Auth::user()->name,
         'visibility' => $validated['visibility'],
-        'status' => 'pending', // Always pending by default
-        'published_at' => null, // Only set when admin approves
+        'status' => 'pending', 
+        'published_at' => null, 
     ]);
 
     if (!empty($validated['tags'])) {
@@ -134,6 +134,12 @@ public function show(Post $post)
     if ($request->hasFile('featured_image')) {
         $post->addMediaFromRequest('featured_image')
             ->toMediaCollection('featured_image');
+    }
+    if ($request->hasFile('attachments')) {
+        foreach ($request->file('attachments') as $file) {
+            $post->addMedia($file)
+                 ->toMediaCollection('attachments', 'private');
+        }
     }
 
     return redirect('/posts')->with('success', 'Post submitted for approval!');
@@ -178,15 +184,15 @@ public function show(Post $post)
         'category_id' => $validated['category_id'] ?? null,
         'writer' => $validated['writer'] ?? $post->writer,
         'visibility' => $validated['visibility'],
-        'status' => 'pending', // Reset to pending after edit so admin re-approves
-        'published_at' => null, // Reset published_at
+        'status' => 'pending', 
+        'published_at' => null, 
     ]);
 
-    // Sync tags
+    
     if (isset($validated['tags'])) {
         $post->tags()->sync($validated['tags']);
     } else {
-        $post->tags()->detach(); // Remove all tags if none selected
+        $post->tags()->detach(); 
     }
 
     // Update featured image
