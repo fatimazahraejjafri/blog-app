@@ -84,6 +84,7 @@ class PostController extends Controller
         $post->delete();
         return back()->with('success', 'Post deleted!');
     }
+    
     public function stats(): JsonResponse
     {
         $posts = Post::all();
@@ -132,7 +133,6 @@ class PostController extends Controller
                 'labels' => $trend->pluck('date'),
                 'data'   => $trend->pluck('count'),
             ],
-            'roles' => $admin->getRoleNames(), 
         ]);
     }
 }

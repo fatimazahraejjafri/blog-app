@@ -296,17 +296,19 @@ onMounted(async () => {
                 </div>
             </div>
 
-            <!-- Export bar -->
-            <div class="bg-foreground rounded-2xl px-6 py-4 flex items-center justify-between">
-                <div>
-                    <div class="text-sm font-bold text-background">Export your dashboard statistics</div>
-                    <div class="text-xs text-background/50 mt-0.5">Download a full report of posts, authors and trends</div>
-                </div>
-                <button class="px-5 py-2 bg-background text-foreground text-sm font-bold rounded-xl hover:shadow-lg transition-all">
-                    ⬇ Export statistics
-                </button>
-            </div>
-
+        <!-- Replace Export Statistics bar with Activity Button -->
+<div class="bg-foreground rounded-2xl px-6 py-4 flex items-center justify-between">
+    <div>
+        <div class="text-sm font-bold text-background">User Activity</div>
+        <div class="text-xs text-background/50 mt-0.5">View the latest actions performed by users</div>
+    </div>
+    <Link
+        href="/admin/activity" 
+        class="px-5 py-2 bg-background text-foreground text-sm font-bold rounded-xl hover:shadow-lg transition-all inline-flex items-center gap-2"
+    >
+        👀 View Activity
+    </Link>
+</div>
         </div>
     </AppLayout>
 </template>

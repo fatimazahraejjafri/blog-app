@@ -1,0 +1,19 @@
+@startuml
+
+class User
+class UserType
+class Role
+class Entity
+class Courrier
+class Theme
+class Affectation
+
+UserType "1" -- "N" User
+User "N" -- "N" Role
+User "N" -- "N" Entity
+Theme "1" -- "N" Courrier
+Courrier "1" -- "N" Affectation
+Entity "1" -- "N" Affectation
+User "1" -- "N" Affectation
+
+@enduml

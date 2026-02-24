@@ -9,12 +9,15 @@ use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Illuminate\Support\Str;
 use Spatie\Translatable\HasTranslations;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;          
 
 
 class Post extends Model implements HasMedia
 {
     use InteractsWithMedia;
     use HasTranslations;
+    use LogsActivity; 
 
     protected $fillable = [
         'user_id',
@@ -27,6 +30,11 @@ class Post extends Model implements HasMedia
         'status',
         'published_at',
     ];
+    
+    protected static $logAttributes = ['title', 'content', 'category_id', 'visibility', 'status'];
+    protected static $logOnlyDirty = true; // only log changes
+    protected static $submitEmptyLogs = false; // avoid logging if nothing changed
+    protected static $logName = 'post'; // optional
 
     protected $casts = [
         'published_at' => 'datetime',
@@ -58,7 +66,7 @@ class Post extends Model implements HasMedia
         return $this->belongsToMany(Tag::class);
     }
 
-    // Register media collections
+    
     public function registerMediaCollections(): void
     {
         $this->addMediaCollection('featured_image')
@@ -66,4 +74,11 @@ class Post extends Model implements HasMedia
 
         $this->addMediaCollection('gallery');
     }
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+        ->logOnly(['title', 'category_id'])      
+        ->logOnlyDirty()                          
+        ->dontSubmitEmptyLogs();        
+        }
 }
